@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.IO;
 using LookrQuickText.Models;
 
 namespace LookrQuickText.Services;
@@ -15,6 +16,7 @@ public sealed class SecureSnippetStore
     private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("LookrQuickText.LocalVault.v1");
 
     private readonly string _storageFilePath;
+    public string? LastLoadError { get; private set; }
 
     public SecureSnippetStore()
     {
@@ -28,6 +30,8 @@ public sealed class SecureSnippetStore
 
     public IReadOnlyList<QuickTextSnippet> Load()
     {
+        LastLoadError = null;
+
         if (!File.Exists(_storageFilePath))
         {
             return Array.Empty<QuickTextSnippet>();
@@ -53,18 +57,22 @@ public sealed class SecureSnippetStore
         }
         catch (CryptographicException)
         {
+            LastLoadError = "Could not decrypt saved snippets for this Windows user.";
             return Array.Empty<QuickTextSnippet>();
         }
         catch (JsonException)
         {
+            LastLoadError = "Saved snippets file is corrupted or invalid JSON.";
             return Array.Empty<QuickTextSnippet>();
         }
         catch (IOException)
         {
+            LastLoadError = "Saved snippets file could not be read due to an I/O error.";
             return Array.Empty<QuickTextSnippet>();
         }
         catch (UnauthorizedAccessException)
         {
+            LastLoadError = "Permission denied while reading saved snippets.";
             return Array.Empty<QuickTextSnippet>();
         }
     }

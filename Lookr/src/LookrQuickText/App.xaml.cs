@@ -6,7 +6,7 @@ using Drawing = System.Drawing;
 
 namespace LookrQuickText;
 
-public partial class App : Application
+public partial class App : System.Windows.Application
 {
     private WinForms.NotifyIcon? _notifyIcon;
     private MainWindow? _mainWindow;

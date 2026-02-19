@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Security.Cryptography;
+using System.IO;
 using System.Windows.Threading;
 using LookrQuickText.Models;
 using LookrQuickText.Services;
@@ -366,6 +367,10 @@ public sealed class MainViewModel : ObservableObject
     private void LoadSettings()
     {
         var settings = _settingsStore.Load();
+        if (!string.IsNullOrWhiteSpace(_settingsStore.LastLoadError))
+        {
+            StatusMessage = _settingsStore.LastLoadError;
+        }
 
         _aiExecutablePath = settings.AiExecutablePath ?? string.Empty;
         _aiModelPath = settings.AiModelPath ?? string.Empty;
@@ -383,6 +388,11 @@ public sealed class MainViewModel : ObservableObject
     private void LoadSnippets()
     {
         var loaded = _snippetStore.Load();
+        if (!string.IsNullOrWhiteSpace(_snippetStore.LastLoadError))
+        {
+            StatusMessage = _snippetStore.LastLoadError;
+        }
+
         if (loaded.Count == 0)
         {
             loaded =

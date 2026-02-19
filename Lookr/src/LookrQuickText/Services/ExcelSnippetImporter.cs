@@ -1,4 +1,5 @@
 using System.Text;
+using System.IO;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using LookrQuickText.Models;
@@ -7,6 +8,10 @@ namespace LookrQuickText.Services;
 
 public sealed class ExcelSnippetImporter
 {
+    private const long MaxImportFileBytes = 20 * 1024 * 1024; // 20 MB
+    private const int MaxImportRows = 10000;
+    private const int MaxCellCharacters = 10000;
+
     public IReadOnlyList<QuickTextSnippet> Import(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
@@ -17,6 +22,13 @@ public sealed class ExcelSnippetImporter
         if (!File.Exists(filePath))
         {
             throw new FileNotFoundException("Excel file not found.", filePath);
+        }
+
+        var fileInfo = new FileInfo(filePath);
+        if (fileInfo.Length > MaxImportFileBytes)
+        {
+            throw new InvalidDataException(
+                $"Workbook is too large to import safely. Maximum supported size is {MaxImportFileBytes / (1024 * 1024)} MB.");
         }
 
         using var spreadsheet = SpreadsheetDocument.Open(filePath, false);
@@ -41,15 +53,17 @@ public sealed class ExcelSnippetImporter
             return Array.Empty<QuickTextSnippet>();
         }
 
-        var rows = sheetData.Elements<Row>().ToList();
-        if (rows.Count < 2)
+        var rows = sheetData.Elements<Row>();
+        using var rowEnumerator = rows.GetEnumerator();
+        if (!rowEnumerator.MoveNext())
         {
             return Array.Empty<QuickTextSnippet>();
         }
 
+        var headerRow = rowEnumerator.Current;
         var sharedStrings = workbookPart.SharedStringTablePart?.SharedStringTable;
 
-        var headers = ReadRow(rows[0], sharedStrings)
+        var headers = ReadRow(headerRow, sharedStrings)
             .ToDictionary(
                 pair => pair.Key,
                 pair => NormalizeHeader(pair.Value),
@@ -66,9 +80,17 @@ public sealed class ExcelSnippetImporter
         }
 
         var snippets = new List<QuickTextSnippet>();
+        var dataRowCount = 0;
 
         foreach (var row in rows.Skip(1))
         {
+            dataRowCount++;
+            if (dataRowCount > MaxImportRows)
+            {
+                throw new InvalidDataException(
+                    $"Workbook has too many rows. Maximum supported data rows is {MaxImportRows}.");
+            }
+
             var values = ReadRow(row, sharedStrings);
 
             var title = GetValue(values, titleColumn);
@@ -129,6 +151,8 @@ public sealed class ExcelSnippetImporter
 
     private static string ResolveCellValue(Cell cell, SharedStringTable? sharedStrings)
     {
+        var value = string.Empty;
+
         if (cell.DataType?.Value == CellValues.SharedString)
         {
             if (cell.CellValue?.Text is null || sharedStrings is null)
@@ -142,20 +166,24 @@ public sealed class ExcelSnippetImporter
             }
 
             var item = sharedStrings.Elements<SharedStringItem>().ElementAtOrDefault(index);
-            return item?.InnerText ?? string.Empty;
+            value = item?.InnerText ?? string.Empty;
+            return EnsureSafeCellSize(value);
         }
 
         if (cell.DataType?.Value == CellValues.InlineString)
         {
-            return cell.InlineString?.InnerText ?? string.Empty;
+            value = cell.InlineString?.InnerText ?? string.Empty;
+            return EnsureSafeCellSize(value);
         }
 
         if (cell.DataType?.Value == CellValues.Boolean)
         {
-            return cell.CellValue?.Text == "1" ? "TRUE" : "FALSE";
+            value = cell.CellValue?.Text == "1" ? "TRUE" : "FALSE";
+            return EnsureSafeCellSize(value);
         }
 
-        return cell.CellValue?.Text ?? cell.InnerText ?? string.Empty;
+        value = cell.CellValue?.Text ?? cell.InnerText ?? string.Empty;
+        return EnsureSafeCellSize(value);
     }
 
     private static string? FindColumn(IReadOnlyDictionary<string, string> headers, params string[] names)
@@ -217,5 +245,16 @@ public sealed class ExcelSnippetImporter
             .Replace("_", string.Empty, StringComparison.Ordinal)
             .Replace(" ", string.Empty, StringComparison.Ordinal)
             .ToLowerInvariant();
+    }
+
+    private static string EnsureSafeCellSize(string value)
+    {
+        if (value.Length > MaxCellCharacters)
+        {
+            throw new InvalidDataException(
+                $"Workbook contains a cell larger than the supported limit ({MaxCellCharacters} characters).");
+        }
+
+        return value;
     }
 }

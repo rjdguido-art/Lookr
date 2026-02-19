@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using System.IO;
 using LookrQuickText.Models;
 
 namespace LookrQuickText.Services;
@@ -23,18 +24,19 @@ public sealed class LlamaCppAiService : ILocalAiService
         }
 
         var prompt = BuildPrompt(request);
-        var attempt = await RunProcessAsync(
-            settings.ExecutablePath,
-            BuildArguments(settings, prompt, includeNoDisplayPrompt: true),
-            cancellationToken);
+        var promptFilePath = CreatePromptFile(prompt);
+        ProcessResult attempt;
 
-        if (attempt.ExitCode != 0
-            && ContainsUnknownOption(attempt.Error, "--no-display-prompt"))
+        try
         {
-            attempt = await RunProcessAsync(
-                settings.ExecutablePath,
-                BuildArguments(settings, prompt, includeNoDisplayPrompt: false),
+            attempt = await RunWithCompatibilityFallbackAsync(
+                settings,
+                promptFilePath,
                 cancellationToken);
+        }
+        finally
+        {
+            TryDeleteFile(promptFilePath);
         }
 
         if (attempt.ExitCode != 0)
@@ -87,7 +89,8 @@ public sealed class LlamaCppAiService : ILocalAiService
 
     private static IReadOnlyList<string> BuildArguments(
         LocalAiRuntimeSettings settings,
-        string prompt,
+        string promptFilePath,
+        PromptFileArgumentStyle promptFileStyle,
         bool includeNoDisplayPrompt)
     {
         var maxTokens = Math.Clamp(settings.MaxTokens, 64, 1024);
@@ -106,10 +109,55 @@ public sealed class LlamaCppAiService : ILocalAiService
             args.Add("--no-display-prompt");
         }
 
-        args.Add("-p");
-        args.Add(prompt);
+        args.Add(promptFileStyle == PromptFileArgumentStyle.Long ? "--file" : "-f");
+        args.Add(promptFilePath);
 
         return args;
+    }
+
+    private static async Task<ProcessResult> RunWithCompatibilityFallbackAsync(
+        LocalAiRuntimeSettings settings,
+        string promptFilePath,
+        CancellationToken cancellationToken)
+    {
+        var attempt = await RunProcessAsync(
+            settings.ExecutablePath,
+            BuildArguments(settings, promptFilePath, PromptFileArgumentStyle.Long, includeNoDisplayPrompt: true),
+            cancellationToken);
+
+        if (attempt.ExitCode != 0 && ContainsUnknownOption(attempt.Error, "--no-display-prompt"))
+        {
+            attempt = await RunProcessAsync(
+                settings.ExecutablePath,
+                BuildArguments(settings, promptFilePath, PromptFileArgumentStyle.Long, includeNoDisplayPrompt: false),
+                cancellationToken);
+        }
+
+        if (attempt.ExitCode == 0 || !ContainsUnknownOption(attempt.Error, "--file"))
+        {
+            return attempt;
+        }
+
+        attempt = await RunProcessAsync(
+            settings.ExecutablePath,
+            BuildArguments(settings, promptFilePath, PromptFileArgumentStyle.Short, includeNoDisplayPrompt: true),
+            cancellationToken);
+
+        if (attempt.ExitCode != 0 && ContainsUnknownOption(attempt.Error, "--no-display-prompt"))
+        {
+            attempt = await RunProcessAsync(
+                settings.ExecutablePath,
+                BuildArguments(settings, promptFilePath, PromptFileArgumentStyle.Short, includeNoDisplayPrompt: false),
+                cancellationToken);
+        }
+
+        if (attempt.ExitCode != 0 && ContainsUnknownOption(attempt.Error, "-f"))
+        {
+            throw new InvalidOperationException(
+                "Your llama.cpp binary does not support prompt file input. Update llama.cpp to a newer version.");
+        }
+
+        return attempt;
     }
 
     private static bool ContainsUnknownOption(string errorText, string option)
@@ -121,6 +169,31 @@ public sealed class LlamaCppAiService : ILocalAiService
 
         return errorText.Contains(option, StringComparison.OrdinalIgnoreCase)
             && errorText.Contains("unknown", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string CreatePromptFile(string prompt)
+    {
+        var promptFilePath = Path.Combine(
+            Path.GetTempPath(),
+            $"lookr-llama-prompt-{Guid.NewGuid():N}.txt");
+
+        File.WriteAllText(promptFilePath, prompt, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        return promptFilePath;
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup for temporary prompt files.
+        }
     }
 
     private static async Task<ProcessResult> RunProcessAsync(
@@ -190,4 +263,10 @@ public sealed class LlamaCppAiService : ILocalAiService
     }
 
     private sealed record ProcessResult(int ExitCode, string Output, string Error);
+
+    private enum PromptFileArgumentStyle
+    {
+        Long,
+        Short
+    }
 }

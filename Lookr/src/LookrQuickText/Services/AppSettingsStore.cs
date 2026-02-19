@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.IO;
 using LookrQuickText.Models;
 
 namespace LookrQuickText.Services;
@@ -11,6 +12,7 @@ public sealed class AppSettingsStore
     };
 
     private readonly string _settingsFilePath;
+    public string? LastLoadError { get; private set; }
 
     public AppSettingsStore()
     {
@@ -24,6 +26,8 @@ public sealed class AppSettingsStore
 
     public AppSettings Load()
     {
+        LastLoadError = null;
+
         if (!File.Exists(_settingsFilePath))
         {
             return new AppSettings();
@@ -42,14 +46,17 @@ public sealed class AppSettingsStore
         }
         catch (IOException)
         {
+            LastLoadError = "App settings file could not be read due to an I/O error.";
             return new AppSettings();
         }
         catch (UnauthorizedAccessException)
         {
+            LastLoadError = "Permission denied while reading app settings.";
             return new AppSettings();
         }
         catch (JsonException)
         {
+            LastLoadError = "App settings file is corrupted or invalid JSON.";
             return new AppSettings();
         }
     }

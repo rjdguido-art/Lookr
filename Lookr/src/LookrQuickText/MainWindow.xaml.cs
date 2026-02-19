@@ -4,6 +4,9 @@ using System.Windows;
 using System.Windows.Interop;
 using Microsoft.Win32;
 using LookrQuickText.ViewModels;
+using WpfApplication = System.Windows.Application;
+using WpfMessageBox = System.Windows.MessageBox;
+using Win32OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 namespace LookrQuickText;
 
@@ -49,7 +52,7 @@ public partial class MainWindow : Window
     {
         if (msg == WmHotkey && wParam.ToInt32() == HotkeyId)
         {
-            if (Application.Current is App app)
+            if (WpfApplication.Current is App app)
             {
                 app.ToggleWidget();
             }
@@ -62,7 +65,7 @@ public partial class MainWindow : Window
 
     private void OnWindowClosing(object? sender, CancelEventArgs e)
     {
-        if (Application.Current is not App app || app.IsShuttingDown)
+        if (WpfApplication.Current is not App app || app.IsShuttingDown)
         {
             return;
         }
@@ -90,7 +93,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dialog = new OpenFileDialog
+        var dialog = new Win32OpenFileDialog
         {
             Title = "Import QuickTexts from Excel",
             Filter = "Excel Workbook (*.xlsx)|*.xlsx|Excel Macro-Enabled Workbook (*.xlsm)|*.xlsm",
@@ -106,7 +109,7 @@ public partial class MainWindow : Window
         try
         {
             var result = viewModel.ImportFromExcelTemplate(dialog.FileName);
-            MessageBox.Show(
+            WpfMessageBox.Show(
                 this,
                 $"Imported: {result.AddedCount}\nSkipped duplicates: {result.SkippedCount}",
                 "Excel Import Complete",
@@ -115,7 +118,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
+            WpfMessageBox.Show(
                 this,
                 $"Could not import the selected workbook.\n\n{ex.Message}",
                 "Import Error",
@@ -131,7 +134,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dialog = new OpenFileDialog
+        var dialog = new Win32OpenFileDialog
         {
             Title = "Select llama.cpp executable",
             Filter = "Executable (*.exe)|*.exe|All Files (*.*)|*.*",
@@ -152,7 +155,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dialog = new OpenFileDialog
+        var dialog = new Win32OpenFileDialog
         {
             Title = "Select GGUF model",
             Filter = "GGUF Model (*.gguf)|*.gguf|All Files (*.*)|*.*",
