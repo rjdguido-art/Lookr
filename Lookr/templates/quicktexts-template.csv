@@ -1,0 +1,4 @@
+Title,Content,Category,Keywords
+Order Follow-up,"Hi {{name}}, just following up on your order status.",Sales,"follow-up,order"
+Welcome Reply,"Thanks for reaching out. Happy to help with your request.",Support,"welcome,help"
+Invoice Reminder,"This is a quick reminder that invoice {{invoice_number}} is due on {{due_date}}.",Finance,"invoice,reminder"

@@ -1,0 +1,109 @@
+<Window x:Class="LookrQuickText.WidgetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Lookr Widget"
+        Width="390"
+        Height="520"
+        MinWidth="340"
+        MinHeight="320"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ResizeMode="CanResizeWithGrip"
+        WindowStartupLocation="Manual"
+        Background="#003D5B"
+        FontFamily="Segoe UI">
+    <Window.Resources>
+        <SolidColorBrush x:Key="PanelBackground" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="PanelBorder" Color="#33003D5B" />
+        <SolidColorBrush x:Key="Accent" Color="#25E2CC" />
+        <SolidColorBrush x:Key="PrimaryBlue" Color="#003D5B" />
+        <SolidColorBrush x:Key="PrimaryText" Color="#333333" />
+
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource Accent}" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryBlue}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="{StaticResource PanelBackground}" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryText}" />
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="{StaticResource PanelBackground}" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryText}" />
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+    </Window.Resources>
+
+    <Border BorderBrush="{StaticResource PanelBorder}" BorderThickness="1" CornerRadius="10" Background="{StaticResource PanelBackground}" Padding="10">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <DockPanel>
+                <TextBlock Text="QuickText Widget"
+                           FontSize="15"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource PrimaryText}"
+                           VerticalAlignment="Center" />
+                <Button DockPanel.Dock="Right"
+                        Content="Library"
+                        Padding="10,4"
+                        Margin="8,0,0,0"
+                        Click="OnOpenLibraryClick" />
+            </DockPanel>
+
+            <ComboBox Grid.Row="1"
+                      Margin="0,10,0,6"
+                      ItemsSource="{Binding WidgetCategoryFilters}"
+                      SelectedItem="{Binding WidgetSelectedCategoryFilter}" />
+
+            <TextBox Grid.Row="2"
+                     Height="30"
+                     Margin="0,0,0,8"
+                     VerticalContentAlignment="Center"
+                     Text="{Binding WidgetSearchQuery, UpdateSourceTrigger=PropertyChanged}" />
+
+            <ListBox Grid.Row="3"
+                     x:Name="SnippetList"
+                     ItemsSource="{Binding WidgetFilteredSnippets}"
+                     MouseDoubleClick="OnSnippetDoubleClick">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="2,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="74" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Category}" FontSize="10" Foreground="{StaticResource Accent}" />
+                                <TextBlock Text="{Binding Preview}" FontSize="11" Foreground="{StaticResource PrimaryText}" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+
+                            <Button Grid.Column="1"
+                                    Content="Copy"
+                                    Padding="8,2"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding DataContext.CopySnippetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding}" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+    </Border>
+</Window>
