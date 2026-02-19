@@ -6,11 +6,15 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repoRoot "src\\LookrQuickText\\LookrQuickText.csproj"
-$publishDir = Join-Path $repoRoot "src\\LookrQuickText\\bin\\Release\\net8.0-windows10.0.19041.0\\win-x64\\publish"
+$publishDir = Join-Path $repoRoot "installer\\publish"
 $installerScript = Join-Path $repoRoot "installer\\LookrQuickText.iss"
 
 Write-Host "Publishing application..."
-dotnet publish $project -c Release -r win-x64 --self-contained true
+if (Test-Path $publishDir) {
+    Remove-Item $publishDir -Recurse -Force
+}
+
+dotnet publish $project -c Release -r win-x64 --self-contained true -o $publishDir
 
 if (-not (Test-Path $publishDir)) {
     throw "Publish directory not found: $publishDir"

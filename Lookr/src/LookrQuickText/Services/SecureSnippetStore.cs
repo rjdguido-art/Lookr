@@ -75,6 +75,11 @@ public sealed class SecureSnippetStore
             LastLoadError = "Permission denied while reading saved snippets.";
             return Array.Empty<QuickTextSnippet>();
         }
+        catch (Exception)
+        {
+            LastLoadError = "Saved snippets could not be loaded due to an unexpected error.";
+            return Array.Empty<QuickTextSnippet>();
+        }
     }
 
     public void Save(IEnumerable<QuickTextSnippet> snippets)
@@ -103,23 +108,44 @@ public sealed class SecureSnippetStore
     {
         public static SnippetRecord FromSnippet(QuickTextSnippet snippet) =>
             new(
-                snippet.Id,
-                snippet.Title,
-                snippet.Content,
-                snippet.Category,
-                snippet.Keywords,
+                NormalizeId(snippet.Id),
+                NormalizeTitle(snippet.Title),
+                snippet.Content ?? string.Empty,
+                NormalizeCategory(snippet.Category),
+                snippet.Keywords ?? string.Empty,
                 null,
                 snippet.LastUsedUtc);
 
         public QuickTextSnippet ToSnippet() =>
             new()
             {
-                Id = Id,
-                Title = Title,
-                Content = Content,
-                Category = string.IsNullOrWhiteSpace(Category) ? "General" : Category,
-                Keywords = string.IsNullOrWhiteSpace(Keywords) ? Tags ?? string.Empty : Keywords,
-                LastUsedUtc = LastUsedUtc
+                Id = NormalizeId(Id),
+                Title = NormalizeTitle(Title),
+                Content = Content ?? string.Empty,
+                Category = NormalizeCategory(Category),
+                Keywords = string.IsNullOrWhiteSpace(Keywords) ? Tags?.Trim() ?? string.Empty : Keywords.Trim(),
+                LastUsedUtc = LastUsedUtc == default ? DateTime.UtcNow : LastUsedUtc
             };
+
+        private static string NormalizeId(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? Guid.NewGuid().ToString("N")
+                : value.Trim();
+        }
+
+        private static string NormalizeTitle(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? "Untitled QuickText"
+                : value.Trim();
+        }
+
+        private static string NormalizeCategory(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? "General"
+                : value.Trim();
+        }
     }
 }

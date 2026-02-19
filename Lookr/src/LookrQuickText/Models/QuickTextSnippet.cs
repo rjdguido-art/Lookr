@@ -4,23 +4,33 @@ namespace LookrQuickText.Models;
 
 public sealed class QuickTextSnippet : ObservableObject
 {
+    private const string DefaultTitle = "New Snippet";
+    private const string DefaultCategory = "General";
+
     private string _id = Guid.NewGuid().ToString("N");
-    private string _title = "New Snippet";
+    private string _title = DefaultTitle;
     private string _content = string.Empty;
-    private string _category = "General";
+    private string _category = DefaultCategory;
     private string _keywords = string.Empty;
     private DateTime _lastUsedUtc = DateTime.UtcNow;
 
     public string Id
     {
         get => _id;
-        set => SetProperty(ref _id, value);
+        set
+        {
+            var normalized = string.IsNullOrWhiteSpace(value)
+                ? Guid.NewGuid().ToString("N")
+                : value.Trim();
+
+            SetProperty(ref _id, normalized);
+        }
     }
 
     public string Title
     {
         get => _title;
-        set => SetProperty(ref _title, value);
+        set => SetProperty(ref _title, value ?? string.Empty);
     }
 
     public string Content
@@ -28,7 +38,7 @@ public sealed class QuickTextSnippet : ObservableObject
         get => _content;
         set
         {
-            if (SetProperty(ref _content, value))
+            if (SetProperty(ref _content, value ?? string.Empty))
             {
                 OnPropertyChanged(nameof(Preview));
             }
@@ -38,7 +48,14 @@ public sealed class QuickTextSnippet : ObservableObject
     public string Category
     {
         get => _category;
-        set => SetProperty(ref _category, value);
+        set
+        {
+            var normalized = string.IsNullOrWhiteSpace(value)
+                ? DefaultCategory
+                : value.Trim();
+
+            SetProperty(ref _category, normalized);
+        }
     }
 
     public string Keywords
@@ -46,7 +63,7 @@ public sealed class QuickTextSnippet : ObservableObject
         get => _keywords;
         set
         {
-            if (SetProperty(ref _keywords, value))
+            if (SetProperty(ref _keywords, value ?? string.Empty))
             {
                 OnPropertyChanged(nameof(Tags));
             }

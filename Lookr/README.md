@@ -31,7 +31,7 @@ Supported columns:
 At least one of Title or Content must exist.
 
 A starter template is included at:
-`/Users/ron/Desktop/Lookr/templates/quicktexts-template.csv`
+`templates/quicktexts-template.csv`
 
 You can open this CSV in Excel and save as `.xlsx` before importing.
 
@@ -49,7 +49,7 @@ Recommended lightweight local models:
 
 ## Build and run (Windows)
 1. Install .NET 8 SDK.
-2. Open `/Users/ron/Desktop/Lookr/src/LookrQuickText/LookrQuickText.csproj`.
+2. Open `src/LookrQuickText/LookrQuickText.csproj`.
 3. Build and run in Debug or Release.
 
 ## Publish a portable build
@@ -57,11 +57,12 @@ Recommended lightweight local models:
 dotnet publish .\src\LookrQuickText\LookrQuickText.csproj `
   -c Release `
   -r win-x64 `
-  --self-contained true
+  --self-contained true `
+  -o .\installer\publish
 ```
 
 Publish output:
-`src\\LookrQuickText\\bin\\Release\\net8.0-windows10.0.19041.0\\win-x64\\publish`
+`installer\\publish`
 
 ## Build installer (easy end-user install)
 Installer uses Inno Setup and installs per-user (no admin required).
@@ -79,3 +80,4 @@ Installer output:
 ## Notes
 - Closing the app window sends it to tray; use tray `Exit` to fully close.
 - The app remains fully functional without AI; AI is optional.
+- Keep the full publish folder together when sharing builds; launching only `LookrQuickText.exe` without adjacent files will fail.
