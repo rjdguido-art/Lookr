@@ -1,0 +1,66 @@
+name: Build Windows Installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Installer version (for example 1.2.3 or v1.2.3)"
+        required: false
+        default: ""
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $inputVersion = "${{ github.event.inputs.version }}"
+          $tagVersion = "${{ github.ref_name }}"
+
+          if (-not [string]::IsNullOrWhiteSpace($inputVersion)) {
+            $resolved = $inputVersion
+          } elseif ("${{ github.ref_type }}" -eq "tag" -and -not [string]::IsNullOrWhiteSpace($tagVersion)) {
+            $resolved = $tagVersion
+          } else {
+            $resolved = "1.0.${{ github.run_number }}"
+          }
+
+          if ($resolved.StartsWith("v")) {
+            $resolved = $resolved.Substring(1)
+          }
+
+          "app_version=$resolved" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Using installer version: $resolved"
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\Lookr\scripts\build-installer.ps1 -Version "${{ steps.version.outputs.app_version }}"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LookrQuickText-Setup-${{ steps.version.outputs.app_version }}
+          path: Lookr/installer/dist/*.exe
+          if-no-files-found: error
