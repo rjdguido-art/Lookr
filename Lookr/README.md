@@ -58,26 +58,39 @@ dotnet publish .\src\LookrQuickText\LookrQuickText.csproj `
   -c Release `
   -r win-x64 `
   --self-contained true `
-  -o .\installer\publish
+  -p:PublishSingleFile=true `
+  -p:IncludeNativeLibrariesForSelfExtract=true `
+  -p:EnableCompressionInSingleFile=true `
+  -p:DebugType=None `
+  -p:DebugSymbols=false `
+  -o .\dist\portable\publish-temp
 ```
 
-Publish output:
-`installer\\publish`
+Portable EXE:
+`dist\\portable\\publish-temp\\LookrQuickText.exe`
 
-## Build installer (easy end-user install)
-Installer uses Inno Setup and installs per-user (no admin required).
-
-1. Install [Inno Setup](https://jrsoftware.org/isinfo.php) (which provides `iscc.exe`).
-2. Run:
+## Build portable EXE (recommended)
+Use the helper script to produce a versioned portable EXE plus SHA256 file:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -Version 1.0.0
+powershell -ExecutionPolicy Bypass -File .\scripts\build-portable.ps1 -Version 1.0.0 -Runtime win-x64
 ```
 
-Installer output:
-`installer\\dist\\LookrQuickText-Setup-<version>.exe`
+Script output:
+- `dist\\portable\\LookrQuickText-1.0.0-win-x64.exe`
+- `dist\\portable\\LookrQuickText-1.0.0-win-x64.exe.sha256`
+
+## GitHub Actions artifact
+Tag push (for example `v1.0.1`) triggers the workflow:
+`.github/workflows/build-portable-exe.yml`
+
+Artifact uploaded by CI:
+- `LookrQuickText-Portable-<version>-win-x64`
+- Contains:
+  - `LookrQuickText-<version>-win-x64.exe`
+  - `LookrQuickText-<version>-win-x64.exe.sha256`
 
 ## Notes
 - Closing the app window sends it to tray; use tray `Exit` to fully close.
 - The app remains fully functional without AI; AI is optional.
-- Keep the full publish folder together when sharing builds; launching only `LookrQuickText.exe` without adjacent files will fail.
+- The portable EXE does not require admin privileges. Users can run it directly from any writable folder.

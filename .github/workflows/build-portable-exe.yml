@@ -1,10 +1,10 @@
-name: Build Windows Installer
+name: Build Windows Portable EXE
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Installer version (for example 1.2.3 or v1.2.3)"
+        description: "Portable EXE version (for example 1.2.3 or v1.2.3)"
         required: false
         default: ""
   push:
@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 jobs:
-  build-installer:
+  build-portable-exe:
     runs-on: windows-latest
 
     steps:
@@ -26,10 +26,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-
-      - name: Install Inno Setup
-        shell: pwsh
-        run: choco install innosetup --no-progress -y
 
       - name: Resolve version
         id: version
@@ -51,16 +47,18 @@ jobs:
           }
 
           "app_version=$resolved" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          Write-Host "Using installer version: $resolved"
+          Write-Host "Using portable EXE version: $resolved"
 
-      - name: Build installer
+      - name: Build portable EXE
         shell: pwsh
         run: |
-          powershell -ExecutionPolicy Bypass -File .\Lookr\scripts\build-installer.ps1 -Version "${{ steps.version.outputs.app_version }}"
+          powershell -ExecutionPolicy Bypass -File .\Lookr\scripts\build-portable.ps1 -Version "${{ steps.version.outputs.app_version }}" -Runtime "win-x64"
 
-      - name: Upload installer artifact
+      - name: Upload portable EXE artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LookrQuickText-Setup-${{ steps.version.outputs.app_version }}
-          path: Lookr/installer/dist/*.exe
+          name: LookrQuickText-Portable-${{ steps.version.outputs.app_version }}-win-x64
+          path: |
+            Lookr/dist/portable/LookrQuickText-${{ steps.version.outputs.app_version }}-win-x64.exe
+            Lookr/dist/portable/LookrQuickText-${{ steps.version.outputs.app_version }}-win-x64.exe.sha256
           if-no-files-found: error

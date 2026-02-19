@@ -1,0 +1,9 @@
+# .NET build outputs
+Lookr/src/LookrQuickText/bin/
+Lookr/src/LookrQuickText/obj/
+
+# Portable publish output
+Lookr/dist/
+
+# Legacy local publish output
+Lookr/installer/publish/
